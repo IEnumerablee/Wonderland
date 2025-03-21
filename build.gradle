@@ -1,0 +1,118 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
+plugins {
+    id 'java'
+}
+
+group = 'org.ienumerable'
+version = '0.1'
+description = 'Wonderland'
+
+def envProperties = new Properties()
+def envPropertiesFile = file('.env') as Object
+envPropertiesFile.withReader('UTF-8') { reader ->
+    envProperties.load(reader)
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+}
+
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT")
+}
+
+def targetJavaVersion = 21
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('paper-plugin.yml') {
+        expand props
+    }
+}
+
+// MC Server for diagnostic
+
+def serverDir = layout.buildDirectory.dir("server").get().asFile
+def serverJar = new File(serverDir, "paper-${envProperties.getProperty('MC_VER')}.jar")
+def pluginsDir = new File(serverDir, "plugins")
+def pluginJar = new File(pluginsDir, "${project.name}-${project.version}.jar")
+
+tasks.register('prepare') {
+    group = 'server'
+
+    doLast {
+        if (!serverJar.exists()) {
+            // Create server directory if it doesn't exist
+            if (!serverDir.exists()) {
+                serverDir.mkdirs()
+            }
+
+            // Download the Paper server jar
+            def baseUrl = 'https://api.papermc.io/v2/projects/paper/versions/'
+            def jarUrl = new URI("${baseUrl}${envProperties.getProperty('MC_VER')}/builds/" +
+                    "${envProperties.getProperty('PAPER_BUILD')}/downloads/paper-${envProperties.getProperty('MC_VER')}-" +
+                    "${envProperties.getProperty('PAPER_BUILD')}.jar").toURL()
+
+            serverJar.withOutputStream { outputStream ->
+                jarUrl.openStream().withCloseable { inputStream ->
+                    inputStream.transferTo(outputStream)
+                }
+            }
+        }
+    }
+}
+
+tasks.register('start', JavaExec) {
+    group = 'server'
+    dependsOn 'prepare', 'build'
+
+    doFirst {
+        // Create plugins directory if it doesn't exist
+        if (!pluginsDir.exists()) {
+            pluginsDir.mkdirs()
+        }
+
+        // Delete the old plugin jar if it exists
+        if (pluginJar.exists()) {
+            pluginJar.delete()
+        }
+
+        // CRINGE
+        Files.copy(
+                file("${buildDir}/libs/${project.name}-${version}.jar").toPath(),
+                pluginJar.toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+        )
+    }
+
+    classpath = files(serverJar)
+    workingDir = serverDir
+    mainClass.set('io.papermc.paperclip.Main')
+    jvmArgs = ['-Ddisable.watchdog=true', '-Dcom.mojang.eula.agree=true']
+    args = ['--nogui']
+    standardInput = System.in
+}

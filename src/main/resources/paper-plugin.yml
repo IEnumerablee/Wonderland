@@ -1,0 +1,6 @@
+name: Wonderland
+version: '1.0'
+main: org.ienumerable.wonderland.Wonderland
+api-version: '1.21'
+load: STARTUP
+authors: [ IEnumerable ]
