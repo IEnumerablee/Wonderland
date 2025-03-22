@@ -10,6 +10,7 @@ import org.ienumerable.wonderland.generation.layers.Signature;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = Rect.class, name = "rect"),
         @JsonSubTypes.Type(value = MathFunction.class, name = "math"),
+        @JsonSubTypes.Type(value = Plane.class, name = "plane"),
 })
 public abstract class Field implements BlockProvider<Boolean> {
     public String type;
