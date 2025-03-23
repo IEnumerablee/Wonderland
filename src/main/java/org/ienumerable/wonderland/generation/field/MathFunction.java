@@ -4,14 +4,15 @@ import java.util.function.Function;
 
 public class MathFunction extends Field{
 
-    private final double scale, factor, phase;
+    private final double scale, factor, offsetx, offsety;
     private final Fn fn;
     private final Axis axis;
 
-    public MathFunction(double scale, double factor, double phase, String fn, String axis) {
+    public MathFunction(double scale, double factor, double offsetx, double offsety, String fn, String axis) {
         this.scale = scale;
         this.factor = factor;
-        this.phase = phase;
+        this.offsetx = offsetx;
+        this.offsety = offsety;
         this.fn = Fn.valueOf(fn.toUpperCase());
         this.axis = Axis.valueOf(axis.toUpperCase());
     }
@@ -19,7 +20,7 @@ public class MathFunction extends Field{
     @Override
     public Boolean getPos(int x, int y, int z) {
         int a = axis.get(x, z);
-        double v = fn.get((a + phase) * scale) * factor;
+        double v = fn.get((a + offsetx) * scale) * factor + offsety;
         return y <= v;
     }
 
