@@ -1,5 +1,7 @@
 package org.ienumerable.wonderland.generation.layers;
 
+import javax.annotation.Nullable;
+
 public class Signature<T>{
     private final int x, y, z;
     private T v;
@@ -18,8 +20,8 @@ public class Signature<T>{
         this.v = null;
     }
 
-    public void overlap(Signature<T> layer, OverlapMode<T> rule){
-        if(v == null) v = layer.v;
+    public void overlap(Signature<T> layer, @Nullable OverlapMode<T> rule){
+        if(v == null || rule == null) v = layer.v;
         else v = rule.overlap(layer.v(), v);
     }
 
